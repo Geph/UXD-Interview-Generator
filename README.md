@@ -1,58 +1,99 @@
 
 # InsightPro Research Interviewer
 
-InsightPro is a world-class qualitative research studio that uses the **Gemini 3 API** to conduct deep-dive textual interviews. It procedurally generates follow-up probes in real-time to uncover insights that static forms miss.
+InsightPro is a world-class qualitative research studio that uses **Gemini 3** to conduct deep-dive textual interviews.
 
 ## 🛠️ Local Installation
 
-If you have downloaded this project as a ZIP file, follow these steps to run it locally:
-
-### 1. Requirements
-- **Node.js**: Version 18.0 or higher. [Download here](https://nodejs.org/).
-- **NPM**: Comes bundled with Node.js.
-
-### 2. Setup
-Open your terminal in the project directory and run:
-
-```bash
-# Install dependencies
-npm install
-
-# Set your Gemini API Key as an environment variable
-# (On macOS/Linux)
-export API_KEY="your_actual_api_key_here"
-# (On Windows CMD)
-set API_KEY="your_actual_api_key_here"
-# (On Windows PowerShell)
-$env:API_KEY="your_actual_api_key_here"
-
-# Start the development server
-npm run dev
-```
-
-### 3. Building for Production
-To create a high-performance production build:
-```bash
-npm run build
-```
-The optimized files will be available in the `/dist` folder.
+1. **Install Node.js**: [Download here](https://nodejs.org/).
+2. **Setup App**:
+   ```bash
+   npm install
+   export API_KEY="your_gemini_api_key"
+   npm run dev
+   ```
 
 ---
 
-## 🗄️ Database Integration (MySQL)
+## 🗄️ MySQL Database Integration
 
-InsightPro is built to sync research data to a central database. 
+Since browsers cannot talk directly to MySQL, you need a **Bridge Relay**. This is a tiny server that sits between this app and your database.
 
-1.  Open `services/database.ts`.
-2.  Set `USE_MOCK` to `false`.
-3.  Set `ENDPOINT` to your backend API (e.g., `https://api.yourdomain.com/v1/interviews`).
-4.  Your backend should accept a JSON `POST` request and write the payload to your MySQL instance.
+### 1. Create your MySQL Table
+Run this SQL in your database:
+```sql
+CREATE TABLE interview_responses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    study_name VARCHAR(255),
+    respondent_id VARCHAR(255),
+    interview_json JSON,
+    summary_text TEXT,
+    created_at DATETIME
+);
+```
+
+### 2. The Bridge Script (bridge.js)
+Create a file named `bridge.js` in your project root and paste this code. It uses the credentials you provided in `database.ts`.
+
+```javascript
+const express = require('express');
+const mysql = require('mysql2/promise');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.post('/api/save', async (req, res) => {
+    const { config, data } = req.body;
+    try {
+        const connection = await mysql.createConnection({
+            host: config.HOST,
+            user: config.USER,
+            password: config.PASSWORD,
+            database: config.DATABASE
+        });
+
+        const query = `INSERT INTO ${config.TABLE} 
+            (study_name, respondent_id, interview_json, summary_text, created_at) 
+            VALUES (?, ?, ?, ?, ?)`;
+        
+        await connection.execute(query, [
+            data.study_name, 
+            data.respondent_id, 
+            data.interview_json, 
+            data.summary_text, 
+            data.timestamp
+        ]);
+
+        await connection.end();
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.listen(3001, () => console.log('MySQL Bridge running on port 3001'));
+```
+
+### 3. Run the Bridge
+```bash
+npm install express mysql2 cors
+node bridge.js
+```
+
+### 4. Configure the App
+In `services/database.ts`:
+1. Set `USE_MOCK: false`.
+2. Ensure `ENDPOINT` points to `http://localhost:3001/api/save`.
+3. Fill in your `MYSQL` credentials.
 
 ---
 
 ## 🚀 Key Features
-- **PDF Extraction**: Upload a research guide PDF, and Gemini 3 will automatically extract questions and probes.
-- **Smart Probing**: The AI analyzes respondent depth and asks "Why?" or "Can you expand on that?" when answers are too brief.
+- **PDF Extraction**: Gemini 3 automatically parses your research guides.
+- **Smart Probing**: AI generates context-aware follow-ups based on response depth.
 - **Full Guide Support**: Support for rich-text pasting from Google Docs and MS Word.
 
 *Built for Researchers, by Engineers. Powered by Gemini.*

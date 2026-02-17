@@ -2,49 +2,63 @@
 import { InterviewStep } from '../types';
 
 /**
- * DATABASE CONFIGURATION
- * Update these parameters to point to your live MySQL backend.
+ * DATABASE & MYSQL CONFIGURATION
+ * Note: Browser apps cannot connect directly to MySQL for security reasons.
+ * These credentials will be sent to your "Bridge API" (see README.md) 
+ * which performs the actual database insertion.
  */
 export const DB_CONFIG = {
-  // Replace this with your actual API endpoint (e.g., https://api.yourdomain.com/v1/interviews)
-  ENDPOINT: '', 
-  // Set to false when you are ready to send real data to your server
+  // The URL of your local or remote Bridge Relay (e.g., http://localhost:3001/api/save)
+  ENDPOINT: 'http://localhost:3001/api/save', 
+  
+  // Set to false to attempt real synchronization
   USE_MOCK: true,
-  // Optional: Add headers like Auth tokens here
-  HEADERS: {
-    'Content-Type': 'application/json',
-    // 'Authorization': 'Bearer YOUR_TOKEN'
+
+  // MySQL Credentials (handled by the Bridge)
+  MYSQL: {
+    HOST: 'localhost',
+    USER: 'root',
+    PASSWORD: 'your_password',
+    DATABASE: 'research_db',
+    TABLE: 'interview_responses'
   }
 };
 
 export const databaseService = {
   saveInterviewResult: async (studyName: string, respondentId: string, steps: InterviewStep[]) => {
+    // We package the credentials and the data together
     const payload = {
-      study_name: studyName,
-      respondent_id: respondentId,
-      interview_data: JSON.stringify(steps),
-      created_at: new Date().toISOString()
+      config: DB_CONFIG.MYSQL,
+      data: {
+        study_name: studyName,
+        respondent_id: respondentId,
+        // We send the full conversation as a JSON string
+        interview_json: JSON.stringify(steps),
+        summary_text: steps.map(s => `Q: ${s.question}\nA: ${s.response}`).join('\n\n'),
+        timestamp: new Date().toISOString()
+      }
     };
 
     if (DB_CONFIG.USE_MOCK || !DB_CONFIG.ENDPOINT) {
       console.log('--- DB MOCK MODE ---');
-      console.log('Payload intended for MySQL:', payload);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return { success: true, message: 'Data logged to console (Mock Mode)' };
+      console.log('Target MySQL Table:', DB_CONFIG.MYSQL.TABLE);
+      console.log('Final Payload:', payload);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { success: true, message: 'Mock save successful. Configure ENDPOINT to sync.' };
     }
 
     try {
       const response = await fetch(DB_CONFIG.ENDPOINT, {
         method: 'POST',
-        headers: DB_CONFIG.HEADERS,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok) throw new Error(`Bridge Error: ${response.statusText}`);
       
       return await response.json();
     } catch (error) {
-      console.error('Database sync failed:', error);
+      console.error('Database bridge failure:', error);
       throw error;
     }
   }
