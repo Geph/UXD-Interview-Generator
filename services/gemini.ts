@@ -1,12 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { APP_CONFIG } from "./config";
 import { StudyConfig, InterviewStep, AIResponse, CoreQuestion } from "../types";
 
 const getAI = () => {
-  const apiKey = APP_CONFIG.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'undefined') {
-    throw new Error("Gemini API Key is missing. Check services/config.ts or your environment variables.");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    throw new Error("Gemini API Key is missing. Ensure process.env.API_KEY is set during build.");
   }
   return new GoogleGenAI({ apiKey });
 };

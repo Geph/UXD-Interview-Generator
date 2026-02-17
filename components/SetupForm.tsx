@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StudyConfig, CoreQuestion } from '../types';
 import { extractGuideFromDocument } from '../services/gemini';
 import { databaseService } from '../services/database';
-import { APP_CONFIG } from '../services/config';
 
 interface SetupFormProps {
   onStart: (config: StudyConfig) => void;
@@ -24,7 +23,9 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
   
   const editorRef = useRef<HTMLDivElement>(null);
 
-  const hasApiKey = !!APP_CONFIG.GEMINI_API_KEY && APP_CONFIG.GEMINI_API_KEY !== 'undefined';
+  // Check process.env.API_KEY provided by the bundler (Vite)
+  const apiKey = process.env.API_KEY;
+  const hasApiKey = !!apiKey && apiKey !== 'undefined' && apiKey !== '';
 
   const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10));
 
@@ -36,9 +37,9 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
       addLog(`Database Check: ${health.status.toUpperCase()}`);
       
       if (!hasApiKey) {
-        addLog("CRITICAL: Gemini API Key missing. Check services/config.ts");
+        addLog("CRITICAL: Gemini API Key missing from process.env.API_KEY. Ensure you set it before build.");
       } else {
-        addLog("Gemini API Key detected and loaded.");
+        addLog("Gemini API Key detected.");
       }
     };
     checkSystems();
@@ -117,7 +118,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
 
       {showLogs && (
         <div className="bg-slate-900 rounded-2xl p-6 font-mono text-[11px] text-emerald-400 space-y-1 shadow-2xl border border-slate-800 animate-in zoom-in-95 duration-200">
-          <p className="text-slate-500 mb-2">// System Initialization</p>
+          <p className="text-slate-500 mb-2">// System Initialization Verbose</p>
           {logs.map((log, i) => <p key={i}>{log}</p>)}
         </div>
       )}
@@ -230,7 +231,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
         >
           Begin Interview Session
         </button>
-        {!hasApiKey && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest">Critical: Missing API Key</p>}
+        {!hasApiKey && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest animate-pulse">Critical: Missing API Key in build environment</p>}
       </section>
     </div>
   );
