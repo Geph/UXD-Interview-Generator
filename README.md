@@ -3,7 +3,7 @@
 
 InsightPro is a world-class qualitative research studio powered by **Gemini 3**.
 
-## 🛠️ Local Installation
+## 🛠️ Local Installation & Development
 
 1. **Install Node.js**: [Download here](https://nodejs.org/).
 2. **Setup App**:
@@ -15,11 +15,44 @@ InsightPro is a world-class qualitative research studio powered by **Gemini 3**.
 
 ---
 
-## 🗄️ MySQL Database Integration
+## 🚀 Production Deployment (PHP/MySQL Server)
 
-Since browsers cannot connect directly to MySQL, you must use a **Bridge Relay**. 
+If you are moving from a local environment to a live server, follow these steps:
 
-### 1. Create your MySQL Table
+### 1. Configure for Production
+Open `services/database.ts` and ensure your production MySQL credentials are set. Since the app is built into static files, these credentials will be bundled into the JavaScript. 
+*   Ensure `USE_MOCK` is `false`.
+*   Ensure `ENDPOINT` is set to `'./bridge.php'`.
+
+### 2. Build the Application
+Run the following command in your local terminal:
+```bash
+npm run build
+```
+This will create a new folder named `dist` (or sometimes `build`) containing optimized versions of your HTML, CSS, and JavaScript.
+
+### 3. Prepare the Server Files
+1.  Navigate to your local `dist` folder.
+2.  **Crucial Step**: Copy your `bridge.php` file from the project root into the `dist` folder. Build tools usually ignore `.php` files, so you must add it manually.
+3.  Ensure your `dist` folder now contains:
+    *   `index.html`
+    *   `assets/` (folder containing JS/CSS)
+    *   `bridge.php`
+
+### 4. Upload to Server
+1.  Connect to your server via FTP (e.g., FileZilla) or use your Hosting Control Panel's File Manager.
+2.  Upload the **contents** of the `dist` folder directly into your server's public directory (usually `public_html`, `www`, or `htdocs`).
+3.  Do **not** upload the `node_modules` folder or the `src` folder to your live server.
+
+### 5. Final Checklist
+*   **Permissions**: Ensure `bridge.php` has correct permissions (usually 644) so the server can execute it.
+*   **Database**: Ensure you have run the SQL command to create the `interview_responses` table on your production database.
+*   **Environment Variables**: If your server doesn't support system environment variables for the `API_KEY`, the key will be baked into the JS during the `build` step. Ensure you set the variable in your terminal *before* running `npm run build`.
+
+---
+
+## 🗄️ MySQL Database Setup (SQL)
+Run this on your server's MySQL instance:
 ```sql
 CREATE TABLE interview_responses (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,29 +63,5 @@ CREATE TABLE interview_responses (
     created_at DATETIME
 );
 ```
-
-### 2. Choose Your Bridge Method
-
-#### Option A: PHP Bridge (Best for shared hosting / servers)
-If you are deploying to a standard web server where you cannot run Node.js background processes:
-1. Upload the provided `bridge.php` to your server (in the same folder as `index.html`).
-2. Open `services/database.ts`.
-3. Set `ENDPOINT: './bridge.php'`.
-4. Enter your MySQL credentials in the `MYSQL` object.
-5. The app will automatically connect via PHP.
-
-#### Option B: Node.js Bridge (Best for local development)
-1. Ensure `bridge.cjs` is in your project root.
-2. Install bridge dependencies: `npm install express mysql2 cors`.
-3. Run: `node bridge.cjs`.
-4. Set `ENDPOINT: 'http://localhost:3001/api/save'` in `services/database.ts`.
-
----
-
-## 🚀 Key Features
-- **Health Check Dashboard**: Real-time validation of Gemini API and MySQL Relay connectivity.
-- **AI PDF Extraction**: Gemini 3 automatically parses uploaded research guides into core questions.
-- **Deep Probing Engine**: Intelligent follow-ups based on response quality.
-- **System Logs**: Built-in debug console to monitor background activity.
 
 *Built for Researchers. Powered by Gemini.*
