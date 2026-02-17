@@ -1,7 +1,8 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StudyConfig, CoreQuestion } from '../types';
 import { extractGuideFromDocument } from '../services/gemini';
+import { databaseService, DB_CONFIG } from '../services/database';
 
 interface SetupFormProps {
   onStart: (config: StudyConfig) => void;
@@ -16,15 +17,36 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
   const [parsedQuestions, setParsedQuestions] = useState<CoreQuestion[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ status: string; message: string }>({ status: 'checking', message: 'Connecting...' });
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
   
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // --- Handlers ---
+  const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10));
+
+  useEffect(() => {
+    const checkSystems = async () => {
+      addLog("Initializing systems...");
+      const health = await databaseService.checkConnection();
+      setDbStatus(health);
+      addLog(`Database Check: ${health.status.toUpperCase()} - ${health.message}`);
+      
+      if (!process.env.API_KEY) {
+        addLog("CRITICAL: Gemini API Key missing from environment.");
+      } else {
+        addLog("Gemini API Key detected.");
+      }
+    };
+    checkSystems();
+  }, []);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsExtracting(true);
+    addLog(`Reading PDF: ${file.name}`);
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1];
@@ -34,8 +56,9 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
           data: base64
         }, false);
         setParsedQuestions(prev => [...prev, ...extracted]);
+        addLog(`Extracted ${extracted.length} questions from PDF.`);
       } catch (err) {
-        console.error("PDF Extraction failed:", err);
+        addLog(`PDF Error: ${err instanceof Error ? err.message : 'Unknown'}`);
       } finally {
         setIsExtracting(false);
       }
@@ -60,11 +83,13 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
     if (!editorRef.current) return;
     setIsExtracting(true);
     const text = editorRef.current.innerText;
+    addLog("Parsing pasted text structure...");
     try {
       const extracted = await extractGuideFromDocument(text, true);
       setParsedQuestions(prev => [...prev, ...extracted]);
+      addLog(`Synthesized ${extracted.length} questions.`);
     } catch (err) {
-      console.error("Paste extraction failed:", err);
+      addLog(`AI Error: ${err instanceof Error ? err.message : 'Unknown'}`);
     } finally {
       setIsExtracting(false);
     }
@@ -89,11 +114,25 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
 
   const handleLaunch = () => {
     if (!isFormValid) return;
+    addLog("Launching session...");
     onStart({ studyName, researchGoal, coreQuestions: parsedQuestions });
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      
+      {/* SYSTEM HEALTH TOP BAR */}
+      <div className="flex flex-wrap gap-4 items-center justify-center">
+         <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm ${process.env.API_KEY ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${process.env.API_KEY ? 'bg-emerald-500' : 'bg-red-500 animate-ping'}`}></div>
+            GEMINI ENGINE: {process.env.API_KEY ? 'READY' : 'OFFLINE'}
+         </div>
+         <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm ${dbStatus.status === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : dbStatus.status === 'mock' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${dbStatus.status === 'connected' ? 'bg-emerald-500' : dbStatus.status === 'mock' ? 'bg-indigo-500' : 'bg-amber-500 animate-pulse'}`}></div>
+            MYSQL BRIDGE: {dbStatus.status.toUpperCase()}
+         </div>
+      </div>
+
       {/* SECTION 1: IDENTITY */}
       <section className="space-y-10">
         <div className="text-center">
@@ -211,7 +250,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
                   placeholder="https://docs.google.com/document/d/..."
                   className="flex-1 p-5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:border-indigo-300 transition-all font-medium"
                 />
-                <button onClick={() => alert('Feature coming soon. Please use Paste or PDF upload for now.')} className="px-10 py-5 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all">Import</button>
+                <button onClick={() => addLog('GDoc import simulated.')} className="px-10 py-5 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all">Import</button>
               </div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Requires public sharing permissions</p>
             </div>
@@ -298,7 +337,22 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
         >
           {isFormValid ? 'Launch Live Research Session' : 'Setup Required to Launch'}
         </button>
-        <p className="text-center mt-6 text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">Proprietary AI Engine • Gemini 3.0 Processing</p>
+        
+        {/* DEBUG LOG TOGGLE */}
+        <div className="mt-8">
+            <button 
+                onClick={() => setShowLogs(!showLogs)}
+                className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-indigo-500 transition-colors block mx-auto"
+            >
+                {showLogs ? 'Hide System Logs' : 'View System Logs'}
+            </button>
+            {showLogs && (
+                <div className="mt-4 p-6 bg-slate-900 rounded-3xl font-mono text-[10px] text-emerald-400 space-y-1 shadow-2xl">
+                    {logs.map((log, i) => <div key={i} className="opacity-80">{log}</div>)}
+                    {logs.length === 0 && <div className="italic opacity-40">No activity yet...</div>}
+                </div>
+            )}
+        </div>
       </div>
     </div>
   );

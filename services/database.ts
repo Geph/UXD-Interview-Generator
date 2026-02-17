@@ -1,20 +1,13 @@
 
 import { InterviewStep } from '../types';
 
-/**
- * DATABASE & MYSQL CONFIGURATION
- * Note: Browser apps cannot connect directly to MySQL for security reasons.
- * These credentials will be sent to your "Bridge API" (see README.md) 
- * which performs the actual database insertion.
- */
 export const DB_CONFIG = {
-  // The URL of your local or remote Bridge Relay (e.g., http://localhost:3001/api/save)
-  ENDPOINT: 'http://localhost:3001/api/save', 
+  // Use http://127.0.0.1 instead of localhost to avoid some browser/node DNS delays
+  ENDPOINT: 'http://127.0.0.1:3001/api/save', 
+  PING_ENDPOINT: 'http://127.0.0.1:3001/api/health',
   
-  // Set to false to attempt real synchronization
   USE_MOCK: true,
 
-  // MySQL Credentials (handled by the Bridge)
   MYSQL: {
     HOST: 'localhost',
     USER: 'root',
@@ -25,14 +18,28 @@ export const DB_CONFIG = {
 };
 
 export const databaseService = {
+  checkConnection: async (): Promise<{ status: 'connected' | 'error' | 'mock'; message: string }> => {
+    if (DB_CONFIG.USE_MOCK) return { status: 'mock', message: 'Database is in MOCK mode (simulated sync).' };
+    
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(DB_CONFIG.PING_ENDPOINT, { signal: controller.signal });
+      clearTimeout(id);
+      
+      if (response.ok) return { status: 'connected', message: 'Bridge Relay is active and reachable.' };
+      return { status: 'error', message: 'Bridge responded with an error.' };
+    } catch (e) {
+      return { status: 'error', message: 'Bridge Relay unreachable. Ensure node bridge.cjs is running.' };
+    }
+  },
+
   saveInterviewResult: async (studyName: string, respondentId: string, steps: InterviewStep[]) => {
-    // We package the credentials and the data together
     const payload = {
       config: DB_CONFIG.MYSQL,
       data: {
         study_name: studyName,
         respondent_id: respondentId,
-        // We send the full conversation as a JSON string
         interview_json: JSON.stringify(steps),
         summary_text: steps.map(s => `Q: ${s.question}\nA: ${s.response}`).join('\n\n'),
         timestamp: new Date().toISOString()
@@ -40,26 +47,18 @@ export const databaseService = {
     };
 
     if (DB_CONFIG.USE_MOCK || !DB_CONFIG.ENDPOINT) {
-      console.log('--- DB MOCK MODE ---');
-      console.log('Target MySQL Table:', DB_CONFIG.MYSQL.TABLE);
-      console.log('Final Payload:', payload);
+      console.log('--- DB MOCK ---', payload);
       await new Promise(resolve => setTimeout(resolve, 1000));
-      return { success: true, message: 'Mock save successful. Configure ENDPOINT to sync.' };
+      return { success: true, message: 'Mock save successful.' };
     }
 
-    try {
-      const response = await fetch(DB_CONFIG.ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!response.ok) throw new Error(`Bridge Error: ${response.statusText}`);
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Database bridge failure:', error);
-      throw error;
-    }
+    const response = await fetch(DB_CONFIG.ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error(`Bridge Error: ${response.statusText}`);
+    return await response.json();
   }
 };
