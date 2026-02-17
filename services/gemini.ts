@@ -1,17 +1,12 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { APP_CONFIG } from "./config";
 import { StudyConfig, InterviewStep, AIResponse, CoreQuestion } from "../types";
 
-/**
- * Helper to get the AI instance safely.
- * This prevents the app from crashing on load if the API_KEY is missing.
- */
 const getAI = () => {
-  // Use a safer check for process.env.API_KEY to avoid ReferenceErrors
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
-  
-  if (!apiKey) {
-    throw new Error("Gemini API Key is missing. Please ensure process.env.API_KEY is set during the build process.");
+  const apiKey = APP_CONFIG.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'undefined') {
+    throw new Error("Gemini API Key is missing. Check services/config.ts or your environment variables.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -22,10 +17,8 @@ Your goal is to elicit deep, detailed, and meaningful insights from the responde
 
 STRATEGY:
 1. Use the provided "Core Questions" as your primary milestones.
-2. Some questions may have "Predefined Probes" provided by the researcher.
-3. After a respondent answers, evaluate if the response is "shallow" or "brief".
-4. If shallow, generate a probing follow-up. 
-5. Do not move to the next core question until you feel the current topic is explored.
+2. If shallow answers are given, generate a probing follow-up. 
+3. Do not move to the next core question until you feel the current topic is explored.
 `;
 
 export const getNextInterviewAction = async (
@@ -65,8 +58,7 @@ export const extractGuideFromDocument = async (
 ): Promise<CoreQuestion[]> => {
   const ai = getAI();
   const prompt = `Extract a structured qualitative research interview guide from this document. 
-  Identify the core questions and any specific follow-up probes associated with them.
-  Ignore logistics or administrative text.
+  Identify the core questions and any specific follow-up probes.
   Return an array of objects with 'text' (string) and 'predefinedProbes' (array of strings).`;
 
   const parts = isManualText 
