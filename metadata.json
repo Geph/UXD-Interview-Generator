@@ -1,0 +1,5 @@
+{
+  "name": "UXD Interview Generator",
+  "description": "A qualitative UXD research tool that uses AI to conduct interviews, procedurally generating follow-up probes to elicit richer insights.",
+  "requestFramePermissions": []
+}
