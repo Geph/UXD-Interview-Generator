@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StudyConfig, InterviewStep, AIResponse, CoreQuestion } from "../types";
 
+// Initialize using the direct environment variable as required
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const SYSTEM_INSTRUCTION = `
@@ -42,6 +43,8 @@ export const getNextInterviewAction = async (
       },
     },
   });
+  
+  // .text is a property, not a method
   return JSON.parse(response.text || "{}") as AIResponse;
 };
 

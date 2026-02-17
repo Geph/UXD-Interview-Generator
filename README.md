@@ -1,40 +1,58 @@
 
 # InsightPro Research Interviewer
 
-InsightPro is a state-of-the-art qualitative research tool designed to conduct deep-dive textual interviews. Unlike static forms, InsightPro uses the **Gemini 3 API** to procedurally generate follow-up probes in real-time.
+InsightPro is a world-class qualitative research studio that uses the **Gemini 3 API** to conduct deep-dive textual interviews. It procedurally generates follow-up probes in real-time to uncover insights that static forms miss.
 
-## 🗄️ Database Setup (MySQL)
+## 🛠️ Local Installation
 
-To connect InsightPro to your database:
-
-1.  **Backend Endpoint**: You need a simple web server (Node.js, PHP, Python, etc.) that accepts a `POST` request and inserts data into MySQL.
-2.  **Configuration**: Open `services/database.ts`.
-    - Set `ENDPOINT` to your API URL.
-    - Set `USE_MOCK` to `false`.
-3.  **Payload Structure**: Your server will receive a JSON body like this:
-    ```json
-    {
-      "study_name": "UX Research Q1",
-      "respondent_id": "user_xyz123",
-      "interview_data": "[{...steps...}]",
-      "created_at": "2023-10-27T10:00:00Z"
-    }
-    ```
-
-## 🚀 Setup & Hosting
+If you have downloaded this project as a ZIP file, follow these steps to run it locally:
 
 ### 1. Requirements
-- A **Google Gemini API Key** (v3 series recommended).
-- A static file host (Vercel, Netlify, Github Pages).
+- **Node.js**: Version 18.0 or higher. [Download here](https://nodejs.org/).
+- **NPM**: Comes bundled with Node.js.
 
-### 2. Deployment
-- Set the environment variable `API_KEY` in your hosting dashboard.
-- Update the `DB_CONFIG` in `services/database.ts` with your production endpoint.
+### 2. Setup
+Open your terminal in the project directory and run:
 
-## 📝 Usage Tips
-- **Pasting**: You can copy-paste formatted lists from **Google Docs** or **Microsoft Word**. 
-- **Structure**: Top-level bullets are treated as Core Questions. Indented bullets (using Tab or spaces) are treated as specific probes for the AI to prioritize.
-- **Reordering**: Drag and drop cards in the "Parsed Flow" sidebar to change the order of your interview.
+```bash
+# Install dependencies
+npm install
+
+# Set your Gemini API Key as an environment variable
+# (On macOS/Linux)
+export API_KEY="your_actual_api_key_here"
+# (On Windows CMD)
+set API_KEY="your_actual_api_key_here"
+# (On Windows PowerShell)
+$env:API_KEY="your_actual_api_key_here"
+
+# Start the development server
+npm run dev
+```
+
+### 3. Building for Production
+To create a high-performance production build:
+```bash
+npm run build
+```
+The optimized files will be available in the `/dist` folder.
 
 ---
-*Built by Researchers, for Researchers. Powered by Gemini.*
+
+## 🗄️ Database Integration (MySQL)
+
+InsightPro is built to sync research data to a central database. 
+
+1.  Open `services/database.ts`.
+2.  Set `USE_MOCK` to `false`.
+3.  Set `ENDPOINT` to your backend API (e.g., `https://api.yourdomain.com/v1/interviews`).
+4.  Your backend should accept a JSON `POST` request and write the payload to your MySQL instance.
+
+---
+
+## 🚀 Key Features
+- **PDF Extraction**: Upload a research guide PDF, and Gemini 3 will automatically extract questions and probes.
+- **Smart Probing**: The AI analyzes respondent depth and asks "Why?" or "Can you expand on that?" when answers are too brief.
+- **Full Guide Support**: Support for rich-text pasting from Google Docs and MS Word.
+
+*Built for Researchers, by Engineers. Powered by Gemini.*
