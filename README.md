@@ -19,35 +19,36 @@ InsightPro is a world-class qualitative research studio powered by **Gemini 3**.
 
 If you are moving from a local environment to a live server, follow these steps:
 
-### 1. Configure for Production
-Open `services/database.ts` and ensure your production MySQL credentials are set. Since the app is built into static files, these credentials will be bundled into the JavaScript. 
-*   Ensure `USE_MOCK` is `false`.
-*   Ensure `ENDPOINT` is set to `'./bridge.php'`.
+### 1. Build the Application
+Frontend apps are static. The `API_KEY` must be "baked in" during the build process if your server doesn't provide it dynamically.
 
-### 2. Build the Application
-Run the following command in your local terminal:
-```bash
+**On Windows (PowerShell):**
+You **must** run these two commands in the **same** terminal window:
+```powershell
+$env:API_KEY="your_actual_api_key_here"
 npm run build
 ```
-This will create a new folder named `dist` (or sometimes `build`) containing optimized versions of your HTML, CSS, and JavaScript.
 
-### 3. Prepare the Server Files
-1.  Navigate to your local `dist` folder.
-2.  **Crucial Step**: Copy your `bridge.php` file from the project root into the `dist` folder. Build tools usually ignore `.php` files, so you must add it manually.
-3.  Ensure your `dist` folder now contains:
+**On macOS / Linux:**
+```bash
+API_KEY="your_actual_api_key_here" npm run build
+```
+
+### 2. Prepare the Server Files
+1.  Navigate to your local `dist` (or `build`) folder.
+2.  **Crucial Step**: Copy your `bridge.php` file from the project root into that `dist` folder.
+3.  Ensure your `dist` folder contains:
     *   `index.html`
-    *   `assets/` (folder containing JS/CSS)
+    *   `assets/` (folder containing bundled JS/CSS)
     *   `bridge.php`
 
-### 4. Upload to Server
-1.  Connect to your server via FTP (e.g., FileZilla) or use your Hosting Control Panel's File Manager.
-2.  Upload the **contents** of the `dist` folder directly into your server's public directory (usually `public_html`, `www`, or `htdocs`).
-3.  Do **not** upload the `node_modules` folder or the `src` folder to your live server.
+### 3. Upload to Server
+1.  Connect via FTP/SFTP.
+2.  Upload the **contents** of the `dist` folder to your server's web root (e.g., `public_html`).
+3.  **Permissions**: Set `bridge.php` permissions to `644`.
 
-### 5. Final Checklist
-*   **Permissions**: Ensure `bridge.php` has correct permissions (usually 644) so the server can execute it.
-*   **Database**: Ensure you have run the SQL command to create the `interview_responses` table on your production database.
-*   **Environment Variables**: If your server doesn't support system environment variables for the `API_KEY`, the key will be baked into the JS during the `build` step. Ensure you set the variable in your terminal *before* running `npm run build`.
+### 4. Configuration
+Once uploaded, open your site. If you see "GEMINI ENGINE: OFFLINE" in the health check, the API key was not correctly set during Step 1.
 
 ---
 

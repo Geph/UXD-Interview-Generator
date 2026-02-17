@@ -2,8 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StudyConfig, InterviewStep, AIResponse, CoreQuestion } from "../types";
 
-// Initialize using the direct environment variable as required
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+/**
+ * Helper to get the AI instance safely.
+ * This prevents the app from crashing on load if the API_KEY is missing.
+ */
+const getAI = () => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY is not defined in the environment.");
+  }
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 const SYSTEM_INSTRUCTION = `
 You are a world-class qualitative research interviewer. 
@@ -21,6 +29,7 @@ export const getNextInterviewAction = async (
   config: StudyConfig,
   history: InterviewStep[]
 ): Promise<AIResponse> => {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `
@@ -44,7 +53,6 @@ export const getNextInterviewAction = async (
     },
   });
   
-  // .text is a property, not a method
   return JSON.parse(response.text || "{}") as AIResponse;
 };
 
@@ -52,6 +60,7 @@ export const extractGuideFromDocument = async (
   content: string | { mimeType: string; data: string },
   isManualText: boolean = true
 ): Promise<CoreQuestion[]> => {
+  const ai = getAI();
   const prompt = `Extract a structured qualitative research interview guide from this document. 
   Identify the core questions and any specific follow-up probes associated with them.
   Ignore logistics or administrative text.
