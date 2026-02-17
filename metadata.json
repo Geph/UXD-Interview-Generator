@@ -1,5 +1,5 @@
 {
-  "name": "UXD Interview Generator",
+  "name": "Robot Interviewer",
   "description": "A qualitative UXD research tool that uses AI to conduct interviews, procedurally generating follow-up probes to elicit richer insights.",
   "requestFramePermissions": []
 }

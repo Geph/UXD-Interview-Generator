@@ -1,21 +1,31 @@
-
 import React from 'react';
 
-export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface LayoutProps {
+  children: React.ReactNode;
+  onToggleLogs?: () => void;
+  systemReady?: boolean;
+}
+
+export const Layout: React.FC<LayoutProps> = ({ children, onToggleLogs, systemReady }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="w-full border-b border-slate-100 bg-white/70 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100">I</div>
+            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100">R</div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-none">InsightPro</h1>
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mt-1">Research Studio</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-none">Robot Interviewer</h1>
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mt-1">UXD Research Tool</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Engine Active</span>
+            <button 
+              onClick={onToggleLogs}
+              className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all hover:bg-slate-50 ${systemReady ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-200 bg-white'}`}
+            >
+              <div className={`h-2 w-2 rounded-full ${systemReady ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-300'}`}></div>
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">View System Logs</span>
+            </button>
           </div>
         </div>
       </header>

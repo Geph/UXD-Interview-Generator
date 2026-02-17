@@ -18,6 +18,7 @@ STRATEGY:
 1. Use the provided "Core Questions" as your primary milestones.
 2. If shallow answers are given, generate a probing follow-up. 
 3. Do not move to the next core question until you feel the current topic is explored.
+4. Maintain a professional, empathetic, and curious tone.
 `;
 
 export const getNextInterviewAction = async (
@@ -56,12 +57,23 @@ export const extractGuideFromDocument = async (
   isManualText: boolean = true
 ): Promise<CoreQuestion[]> => {
   const ai = getAI();
-  const prompt = `Extract a structured qualitative research interview guide from this document. 
-  Identify the core questions and any specific follow-up probes.
-  Return an array of objects with 'text' (string) and 'predefinedProbes' (array of strings).`;
+  
+  const prompt = `
+    Analyze the following research interview guide.
+    
+    IMPORTANT RULES FOR STRUCTURE:
+    1. Identify 'Core Questions' (usually the main headings or numbered points).
+    2. Identify 'Probes' (nested bullet points, indented text, or sub-questions directly following a core question).
+    3. Hierarchy matters: Text indented under a question should be added to that question's 'predefinedProbes' array.
+    4. Ignore administrative text (names of researchers, dates, etc).
+    
+    Return a JSON array of objects with:
+    - 'text' (the core question string)
+    - 'predefinedProbes' (array of strings representing the sub-questions/probes).
+  `;
 
   const parts = isManualText 
-    ? [{ text: prompt + "\n\nDocument:\n" + content }]
+    ? [{ text: prompt + "\n\nDOCUMENT CONTENT:\n" + content }]
     : [{ text: prompt }, { inlineData: content as { mimeType: string; data: string } }];
 
   const response = await ai.models.generateContent({

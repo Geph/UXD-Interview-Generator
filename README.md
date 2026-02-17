@@ -1,7 +1,6 @@
+# Robot Interviewer - UXD Research Tool
 
-# InsightPro Research Interviewer
-
-InsightPro is a world-class qualitative research studio powered by **Gemini 3**.
+Robot Interviewer is a world-class qualitative research tool powered by **Gemini 3**.
 
 ## 🛠️ Local Installation & Development
 
