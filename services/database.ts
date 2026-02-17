@@ -1,61 +1,73 @@
 
-import { InterviewStep } from '../types';
+import { InterviewStep, StudyConfig } from '../types';
 
 export const DB_CONFIG = {
-  /**
-   * BRIDGE CONFIGURATION
-   * If using Node.js locally: 'http://127.0.0.1:3001/api/save'
-   * If using PHP on server: './bridge.php' (Relative to where index.html is)
-   */
   ENDPOINT: './bridge.php', 
-  PING_ENDPOINT: './bridge.php', // PHP bridge returns health on GET
-  
-  USE_MOCK: false, // Set to false to enable actual syncing
+  PING_ENDPOINT: './bridge.php', 
+  USE_MOCK: false, 
 
   MYSQL: {
     HOST: 'localhost',
     USER: 'root',
     PASSWORD: 'your_password',
-    DATABASE: 'research_db',
-    TABLE: 'interview_responses'
+    DATABASE: 'research_db'
   }
 };
 
 export const databaseService = {
   checkConnection: async (): Promise<{ status: 'connected' | 'error' | 'mock'; message: string }> => {
-    if (DB_CONFIG.USE_MOCK) return { status: 'mock', message: 'Database is in MOCK mode (simulated sync).' };
+    if (DB_CONFIG.USE_MOCK) return { status: 'mock', message: 'Database is in MOCK mode.' };
     
     try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 3000);
-      // For PHP, a GET request to the same script acts as health check
-      const response = await fetch(DB_CONFIG.PING_ENDPOINT, { signal: controller.signal });
-      clearTimeout(id);
-      
-      if (response.ok) return { status: 'connected', message: 'Bridge Relay (PHP) is active.' };
-      return { status: 'error', message: 'Bridge responded with an error.' };
+      const response = await fetch(DB_CONFIG.PING_ENDPOINT);
+      if (response.ok) return { status: 'connected', message: 'Bridge Relay is active.' };
+      return { status: 'error', message: 'Bridge error: ' + response.status };
     } catch (e) {
-      return { status: 'error', message: 'Bridge Relay unreachable. Ensure bridge.php is uploaded.' };
+      return { status: 'error', message: 'Bridge unreachable. Check if bridge.php is uploaded.' };
     }
+  },
+
+  saveStudyConfig: async (config: StudyConfig) => {
+    const payload = {
+      type: 'study',
+      config: DB_CONFIG.MYSQL,
+      data: {
+        name: config.studyName,
+        goal: config.researchGoal,
+        questions_json: JSON.stringify(config.coreQuestions),
+        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      }
+    };
+
+    if (DB_CONFIG.USE_MOCK) return { success: true };
+
+    const response = await fetch(DB_CONFIG.ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save study config');
+    }
+    return await response.json();
   },
 
   saveInterviewResult: async (studyName: string, respondentId: string, steps: InterviewStep[]) => {
     const payload = {
+      type: 'response',
       config: DB_CONFIG.MYSQL,
       data: {
         study_name: studyName,
         respondent_id: respondentId,
         interview_json: JSON.stringify(steps),
         summary_text: steps.map(s => `Q: ${s.question}\nA: ${s.response}`).join('\n\n'),
-        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ') // Format for MySQL DATETIME
+        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ')
       }
     };
 
-    if (DB_CONFIG.USE_MOCK || !DB_CONFIG.ENDPOINT) {
-      console.log('--- DB MOCK ---', payload);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { success: true, message: 'Mock save successful.' };
-    }
+    if (DB_CONFIG.USE_MOCK) return { success: true };
 
     const response = await fetch(DB_CONFIG.ENDPOINT, {
       method: 'POST',
@@ -65,7 +77,7 @@ export const databaseService = {
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || `Bridge Error: ${response.statusText}`);
+      throw new Error(errorData.error || 'Failed to save response');
     }
     return await response.json();
   }

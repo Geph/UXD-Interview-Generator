@@ -49,9 +49,17 @@ API_KEY="your_actual_production_api_key" npm run build
 This generates a `dist/` folder containing the optimized production assets.
 
 ### 2. Database Preparation
-Run the following SQL script on your MySQL server to create the storage table:
+Run the following SQL script on your MySQL server to create the storage tables:
 
 ```sql
+CREATE TABLE studies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    goal TEXT,
+    questions_json JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE interview_responses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     study_name VARCHAR(255),
