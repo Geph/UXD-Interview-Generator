@@ -7,10 +7,13 @@ import { StudyConfig, InterviewStep, AIResponse, CoreQuestion } from "../types";
  * This prevents the app from crashing on load if the API_KEY is missing.
  */
 const getAI = () => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY is not defined in the environment.");
+  // Use a safer check for process.env.API_KEY to avoid ReferenceErrors
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+  
+  if (!apiKey) {
+    throw new Error("Gemini API Key is missing. Please ensure process.env.API_KEY is set during the build process.");
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 const SYSTEM_INSTRUCTION = `
