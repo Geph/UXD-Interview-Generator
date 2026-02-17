@@ -2,11 +2,15 @@
 import { InterviewStep } from '../types';
 
 export const DB_CONFIG = {
-  // Use http://127.0.0.1 instead of localhost to avoid some browser/node DNS delays
-  ENDPOINT: 'http://127.0.0.1:3001/api/save', 
-  PING_ENDPOINT: 'http://127.0.0.1:3001/api/health',
+  /**
+   * BRIDGE CONFIGURATION
+   * If using Node.js locally: 'http://127.0.0.1:3001/api/save'
+   * If using PHP on server: './bridge.php' (Relative to where index.html is)
+   */
+  ENDPOINT: './bridge.php', 
+  PING_ENDPOINT: './bridge.php', // PHP bridge returns health on GET
   
-  USE_MOCK: true,
+  USE_MOCK: false, // Set to false to enable actual syncing
 
   MYSQL: {
     HOST: 'localhost',
@@ -24,13 +28,14 @@ export const databaseService = {
     try {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 3000);
+      // For PHP, a GET request to the same script acts as health check
       const response = await fetch(DB_CONFIG.PING_ENDPOINT, { signal: controller.signal });
       clearTimeout(id);
       
-      if (response.ok) return { status: 'connected', message: 'Bridge Relay is active and reachable.' };
+      if (response.ok) return { status: 'connected', message: 'Bridge Relay (PHP) is active.' };
       return { status: 'error', message: 'Bridge responded with an error.' };
     } catch (e) {
-      return { status: 'error', message: 'Bridge Relay unreachable. Ensure node bridge.cjs is running.' };
+      return { status: 'error', message: 'Bridge Relay unreachable. Ensure bridge.php is uploaded.' };
     }
   },
 
@@ -42,7 +47,7 @@ export const databaseService = {
         respondent_id: respondentId,
         interview_json: JSON.stringify(steps),
         summary_text: steps.map(s => `Q: ${s.question}\nA: ${s.response}`).join('\n\n'),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' ') // Format for MySQL DATETIME
       }
     };
 
@@ -58,7 +63,10 @@ export const databaseService = {
       body: JSON.stringify(payload)
     });
     
-    if (!response.ok) throw new Error(`Bridge Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Bridge Error: ${response.statusText}`);
+    }
     return await response.json();
   }
 };
